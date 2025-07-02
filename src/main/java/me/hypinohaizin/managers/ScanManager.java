@@ -16,15 +16,26 @@ import java.util.*;
 
 public class ScanManager {
     private final ConfigUtil.Config config;
+    private final Map<String, List<String>> extFileList = new HashMap<>(); // 拡張子別URLリスト
 
     public ScanManager(ConfigUtil.Config config) {
         this.config = config;
     }
 
+    public List<String> getFilesByExtension(String ext) {
+        return extFileList.getOrDefault(ext, Collections.emptyList());
+    }
+
     public void scanWebsite(String url) {
         StringBuilder sb = new StringBuilder();
         Map<String, Integer> extCount = new HashMap<>();
+        extFileList.clear(); // 新規スキャンごとにクリア
+
         try {
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "https://" + url;
+            }
+
             File saveDir = FileUtil.getScanDir(url);
             Document doc;
             String baseHost;
@@ -50,6 +61,10 @@ public class ScanManager {
             Elements links = doc.select("a[href]");
             for (Element link : links) {
                 String linkUrl = link.absUrl("href");
+                if (linkUrl.isEmpty() ||
+                        linkUrl.startsWith("javascript:") ||
+                        linkUrl.startsWith("tel:")) continue;
+
                 boolean isExternal = isExternal(linkUrl, baseHost);
                 String mark = isExternal ? "[外部]" : "[内部]";
                 String[] dates = getUrlDates(linkUrl);
@@ -70,6 +85,7 @@ public class ScanManager {
             Elements images = doc.select("img[src]");
             for (Element img : images) {
                 String imgUrl = img.absUrl("src");
+                if (imgUrl.isEmpty()) continue;
                 boolean isExternal = isExternal(imgUrl, baseHost);
                 String mark = isExternal ? "[外部]" : "[内部]";
                 String[] dates = getUrlDates(imgUrl);
@@ -90,6 +106,7 @@ public class ScanManager {
             Elements scripts = doc.select("script[src]");
             for (Element script : scripts) {
                 String scriptUrl = script.absUrl("src");
+                if (scriptUrl.isEmpty()) continue;
                 boolean isExternal = isExternal(scriptUrl, baseHost);
                 String mark = isExternal ? "[外部]" : "[内部]";
                 String[] dates = getUrlDates(scriptUrl);
@@ -124,7 +141,6 @@ public class ScanManager {
                 return;
             }
             System.out.println("スキャン結果を " + outFile.getAbsolutePath() + " に保存しました。\n");
-
             System.out.println(sb.toString());
         } catch (InterruptedException e) {
             System.out.println("【エラーコード:E03】スリープ中断: " + e.getMessage());
@@ -137,6 +153,7 @@ public class ScanManager {
         String ext = getExtension(url);
         if (!ext.isEmpty()) {
             extCount.put(ext, extCount.getOrDefault(ext, 0) + 1);
+            extFileList.computeIfAbsent(ext, k -> new ArrayList<>()).add(url); // URLリスト追加
         }
     }
 
@@ -179,7 +196,7 @@ public class ScanManager {
     }
 
     private String[] getUrlDates(String url) {
-        String[] result = new String[] { "-", "-" }; // [Last-Modified, Creation-Date]
+        String[] result = new String[] { "-", "-" };
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("HEAD");

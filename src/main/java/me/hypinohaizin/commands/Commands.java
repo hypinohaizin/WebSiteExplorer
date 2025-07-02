@@ -7,6 +7,7 @@ import me.hypinohaizin.utils.FileUtil;
 
 import java.io.*;
 import java.net.URL;
+import java.util.List;
 
 public class Commands {
     private final ConfigUtil.Config config;
@@ -23,6 +24,13 @@ public class Commands {
         if (input.startsWith("scan ")) {
             String url = input.substring(5).trim();
             scanManager.scanWebsite(url);
+        } else if (input.endsWith("list")) {
+            String ext = input.substring(0, input.length() - 4).trim();
+            if (!ext.isEmpty()) {
+                printFileListByExtension(ext);
+            } else {
+                System.out.println("拡張子を指定してください (例: htmllist, pdflist, jslist)");
+            }
         } else if (input.startsWith("dl ") || input.startsWith("download ")) {
             String url = input.startsWith("dl ") ? input.substring(3).trim() : input.substring(9).trim();
             downloadFile(url);
@@ -43,6 +51,18 @@ public class Commands {
             System.out.println("コマンドが不正です。help で一覧を表示します。");
         }
         return true;
+    }
+
+    private void printFileListByExtension(String ext) {
+        List<String> files = scanManager.getFilesByExtension(ext);
+        if (files.isEmpty()) {
+            System.out.println("該当拡張子(." + ext + ")のファイルはありません。");
+        } else {
+            System.out.println("--- ." + ext + " ファイル一覧 ---");
+            for (String url : files) {
+                System.out.println(url);
+            }
+        }
     }
 
     private void downloadFile(String url) {
@@ -68,6 +88,11 @@ public class Commands {
         System.out.println("--- " + WSE.WSE_NAME + " コマンド一覧 ---");
         System.out.println("help             ... このヘルプを表示");
         System.out.println("scan <url>       ... 指定URLをスキャン（内部/外部/拡張子/変更日時/作成日時表示）");
+        System.out.println("htmllist         ... スキャン済みのhtmlファイル一覧を表示");
+        System.out.println("pdflist          ... スキャン済みのpdfファイル一覧を表示");
+        System.out.println("jslist           ... スキャン済みのjsファイル一覧を表示");
+        System.out.println("phplist          ... スキャン済みのphpファイル一覧を表示");
+        System.out.println("<ext>list        ... 他任意の拡張子も同様に対応 (例: ziplist, txtlist)");
         System.out.println("dl <url>         ... 指定ファイルをダウンロード");
         System.out.println("download <url>   ... 上と同じ");
         System.out.println("config           ... スキャン時のdelay(ms)を変更");
